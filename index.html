@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProfitFlip — Fix & Flip Deal Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Barlow:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0b0e;
+  --surface: #111318;
+  --surface2: #181b22;
+  --border: #1e2330;
+  --border2: #252c3a;
+  --green: #00e87a;
+  --green-dim: #00e87a22;
+  --red: #ff3d3d;
+  --red-dim: #ff3d3d22;
+  --yellow: #ffd044;
+  --yellow-dim: #ffd04422;
+  --blue: #4d9fff;
+  --blue-dim: #4d9fff18;
+  --text: #e8eaf0;
+  --muted: #5a6280;
+  --dim: #2e3448;
+  --accent: #ff6b35;
+  --accent2: #ff3d3d;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* NOISE TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* HEADER */
+header {
+  position: relative;
+  z-index: 10;
+  padding: 32px 40px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.logo-main {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  letter-spacing: 2px;
+  line-height: 1;
+  background: linear-gradient(135deg, #ff6b35, #ff3d3d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.header-tagline {
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.5;
+}
+
+.header-tagline span {
+  color: var(--yellow);
+  font-weight: 700;
+}
+
+/* MAIN LAYOUT */
+.app {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  min-height: calc(100vh - 90px);
+}
+
+/* LEFT PANEL - INPUTS */
+.inputs-panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 28px 28px 40px;
+  overflow-y: auto;
+}
+
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.input-group {
+  margin-bottom: 14px;
+}
+
+.input-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+
+.input-hint {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input-suffix {
+  position: absolute;
+  right: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+input[type="number"], input[type="range"] {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 9px 12px 9px 28px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+input[type="number"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px #ff6b3520;
+}
+
+input[type="number"].no-prefix {
+  padding-left: 12px;
+}
+
+input[type="number"].has-suffix {
+  padding-right: 36px;
+}
+
+/* SLIDER */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type="range"] {
+  padding: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  border: none;
+  cursor: pointer;
+  flex: 1;
+  -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.slider-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--yellow);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* TOGGLE BUTTONS */
+.toggle-group {
+  display: flex;
+  gap: 6px;
+}
+
+.toggle-btn {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+
+.toggle-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* SECTION DIVIDERS */
+.section-gap { margin-top: 24px; }
+
+/* RIGHT PANEL - RESULTS */
+.results-panel {
+  padding: 28px 32px 40px;
+  overflow-y: auto;
+}
+
+/* VERDICT BANNER */
+.verdict {
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: all 0.3s;
+  border: 1px solid transparent;
+}
+
+.verdict.go {
+  background: var(--green-dim);
+  border-color: #00e87a40;
+}
+
+.verdict.nogo {
+  background: var(--red-dim);
+  border-color: #ff3d3d40;
+}
+
+.verdict.caution {
+  background: var(--yellow-dim);
+  border-color: #ffd04440;
+}
+
+.verdict-icon {
+  font-size: 40px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.verdict-text {}
+
+.verdict-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 2px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.verdict.go .verdict-title { color: var(--green); }
+.verdict.nogo .verdict-title { color: var(--red); }
+.verdict.caution .verdict-title { color: var(--yellow); }
+
+.verdict-sub {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* METRICS GRID */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+
+.metric-card:hover {
+  border-color: var(--border2);
+}
+
+.metric-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 1px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.metric-sub {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+.metric-value.green { color: var(--green); }
+.metric-value.red { color: var(--red); }
+.metric-value.yellow { color: var(--yellow); }
+.metric-value.blue { color: var(--blue); }
+.metric-value.white { color: var(--text); }
+
+/* SCENARIOS */
+.scenarios-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scenarios-title::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
+.scenarios-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.scenario-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.scenario-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.scenario-card.bear .scenario-name { color: var(--red); }
+.scenario-card.base .scenario-name { color: var(--yellow); }
+.scenario-card.bull .scenario-name { color: var(--green); }
+
+.scenario-card.base {
+  border-color: var(--border2);
+  background: var(--surface2);
+}
+
+.scenario-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.scenario-row:last-child { border-bottom: none; }
+.scenario-row-label { color: var(--muted); }
+.scenario-row-val { font-family: 'DM Mono', monospace; font-weight: 500; }
+
+/* EXIT STRATEGY */
+.exit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.exit-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.exit-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exit-card-title .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.exit-card.flip .exit-card-title .dot { background: var(--accent); }
+.exit-card.hold .exit-card-title .dot { background: var(--blue); }
+
+.exit-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.exit-row:last-child { border-bottom: none; }
+.exit-row-label { color: var(--muted); }
+.exit-row-val { font-family: 'DM Mono', monospace; }
+
+/* COST BREAKDOWN */
+.breakdown-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breakdown-title::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--yellow);
+}
+
+.breakdown-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 80px;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-label { font-size: 11px; color: var(--muted); }
+
+.bar-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bar-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-align: right;
+  color: var(--text);
+}
+
+/* DAY COUNTER */
+.day-counter {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.day-counter-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  flex: 1;
+  min-width: 160px;
+}
+
+.day-counter-label span {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  color: var(--accent);
+}
+
+.day-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.day-stat { text-align: center; }
+.day-stat-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  color: var(--yellow);
+  line-height: 1;
+}
+.day-stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* MAO BLOCK */
+.mao-block {
+  background: linear-gradient(135deg, #ff6b3512, #ff3d3d08);
+  border: 1px solid #ff6b3530;
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mao-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.mao-desc {
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 240px;
+}
+
+.mao-values {
+  display: flex;
+  gap: 20px;
+}
+
+.mao-val-block { text-align: right; }
+.mao-rule-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+.mao-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  color: var(--accent);
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+/* FOOTER NOTE */
+.footer-note {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  line-height: 1.7;
+}
+
+/* DIVIDER */
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .inputs-panel { border-right: none; border-bottom: 1px solid var(--border); }
+  header { padding: 20px; }
+  .results-panel { padding: 20px; }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .scenarios-grid { grid-template-columns: 1fr; }
+  .exit-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-main">ProfitFlip</div>
+    <div class="logo-sub">Deal Analyzer</div>
+  </div>
+  <div class="header-tagline">
+    Stop drowning in spreadsheets.<br>
+    <span>Know your deal in 60 seconds.</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- LEFT: INPUTS -->
+  <div class="inputs-panel">
+
+    <div class="section-label">Property & Deal</div>
+
+    <div class="input-group">
+      <div class="input-label">Purchase Price <span class="input-hint">what you pay</span></div>
+      <div class="input-wrap">
+        <span class="input-prefix">$</span>
+        <input type="number" id="purchase" value="180000" oninput="calc()">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-label">After Repair Value (ARV) <span class="input-hint">post-reno value</span></div>
+      <div class="input-wrap">
+        <span class="input-prefix">$</span>
+        <input type="number" id="arv" value="320000" oninput="calc()">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-label">Rehab Budget <span class="input-hint">total reno cost</span></div>
+      <div class="input-wrap">
+        <span class="input-prefix">$</span>
+        <input type="number" id="rehab" value="55000" oninput="calc()">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-label">Contingency Buffer <span class="input-hint">auto: 10–15%</span></div>
+      <div class="slider-row">
+        <input type="range" id="contingency" min="5" max="25" value="12" oninput="updateSlider('contingency','contingencyVal','%');calc()">
+        <span class="slider-val" id="contingencyVal">12%</span>
+      </div>
+    </div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Financing</div>
+
+    <div class="input-group">
+      <div class="input-label">Loan Type</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" onclick="setLoanType('hardmoney', this)">Hard Money</button>
+        <button class="toggle-btn" onclick="setLoanType('conventional', this)">Conventional</button>
+        <button class="toggle-btn" onclick="setLoanType('cash', this)">All Cash</button>
+      </div>
+    </div>
+
+    <div id="loan-fields">
+      <div class="input-group">
+        <div class="input-label">Down Payment <span class="input-hint">% of purchase</span></div>
+        <div class="slider-row">
+          <input type="range" id="downpct" min="10" max="40" value="20" oninput="updateSlider('downpct','downpctVal','%');calc()">
+          <span class="slider-val" id="downpctVal">20%</span>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">Interest Rate <span class="input-hint">hard money: 8–13%</span></div>
+        <div class="slider-row">
+          <input type="range" id="rate" min="5" max="15" step="0.5" value="10" oninput="updateSlider('rate','rateVal','%');calc()">
+          <span class="slider-val" id="rateVal">10%</span>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">Loan Points <span class="input-hint">origination fee</span></div>
+        <div class="slider-row">
+          <input type="range" id="points" min="0" max="5" step="0.5" value="2" oninput="updateSlider('points','pointsVal','pts');calc()">
+          <span class="slider-val" id="pointsVal">2pts</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Holding & Selling Costs</div>
+
+    <div class="input-group">
+      <div class="input-label">Holding Period <span class="input-hint">months to sell</span></div>
+      <div class="slider-row">
+        <input type="range" id="months" min="2" max="18" value="6" oninput="updateSlider('months','monthsVal','mo');calc()">
+        <span class="slider-val" id="monthsVal">6mo</span>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-label">Monthly Holding Costs <span class="input-hint">taxes + insurance + util</span></div>
+      <div class="input-wrap">
+        <span class="input-prefix">$</span>
+        <input type="number" id="monthly" value="800" oninput="calc()">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-label">Agent Commission <span class="input-hint">% of sale price</span></div>
+      <div class="slider-row">
+        <input type="range" id="commission" min="0" max="8" step="0.5" value="5" oninput="updateSlider('commission','commissionVal','%');calc()">
+        <span class="slider-val" id="commissionVal">5%</span>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-label">Closing Costs (Sell) <span class="input-hint">% of sale price</span></div>
+      <div class="slider-row">
+        <input type="range" id="closingpct" min="0" max="5" step="0.25" value="1.5" oninput="updateSlider('closingpct','closingpctVal','%');calc()">
+        <span class="slider-val" id="closingpctVal">1.5%</span>
+      </div>
+    </div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Dynamic Rule — Market Adjustment</div>
+
+    <div class="input-group">
+      <div class="input-label">70% Rule Multiplier <span class="input-hint">hot market → 75% / slow → 65%</span></div>
+      <div class="toggle-group">
+        <button class="toggle-btn" onclick="setRule(65, this)">65%</button>
+        <button class="toggle-btn active" onclick="setRule(70, this)">70%</button>
+        <button class="toggle-btn" onclick="setRule(75, this)">75%</button>
+        <button class="toggle-btn" onclick="setRule(80, this)">80%</button>
+      </div>
+    </div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Exit Plan B — Hold as Rental</div>
+
+    <div class="input-group">
+      <div class="input-label">Monthly Rent (if held) <span class="input-hint">market rent estimate</span></div>
+      <div class="input-wrap">
+        <span class="input-prefix">$</span>
+        <input type="number" id="rent" value="2100" oninput="calc()">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-label">Vacancy Rate</div>
+      <div class="slider-row">
+        <input type="range" id="vacancy" min="0" max="15" value="7" oninput="updateSlider('vacancy','vacancyVal','%');calc()">
+        <span class="slider-val" id="vacancyVal">7%</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="results-panel">
+
+    <!-- VERDICT -->
+    <div class="verdict go" id="verdict">
+      <div class="verdict-icon" id="verdictIcon">✅</div>
+      <div class="verdict-text">
+        <div class="verdict-title" id="verdictTitle">DEAL IS LIVE</div>
+        <div class="verdict-sub" id="verdictSub">Numbers check out. Strong margin. Pull the trigger.</div>
+      </div>
+    </div>
+
+    <!-- KEY METRICS -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Net Profit</div>
+        <div class="metric-value green" id="netProfit">—</div>
+        <div class="metric-sub" id="netProfitSub">after all costs</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">ROI</div>
+        <div class="metric-value yellow" id="roi">—</div>
+        <div class="metric-sub" id="roiSub">cash on cash</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Total Cash In</div>
+        <div class="metric-value white" id="cashIn">—</div>
+        <div class="metric-sub">to close + carry</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Profit Margin</div>
+        <div class="metric-value blue" id="margin">—</div>
+        <div class="metric-sub">% of ARV</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Annualized ROI</div>
+        <div class="metric-value yellow" id="annualRoi">—</div>
+        <div class="metric-sub" id="annualRoiSub">if sold on time</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Breakeven Price</div>
+        <div class="metric-value white" id="breakeven">—</div>
+        <div class="metric-sub">min ARV to not lose</div>
+      </div>
+    </div>
+
+    <!-- MAO -->
+    <div class="mao-block">
+      <div>
+        <div class="mao-label">Maximum Allowable Offer (MAO)</div>
+        <div class="mao-desc">The most you should pay. Go above this and the deal stops working. Your current offer vs. the limit:</div>
+      </div>
+      <div class="mao-values">
+        <div class="mao-val-block">
+          <div class="mao-rule-label" id="maoRuleLabel">70% Rule</div>
+          <div class="mao-val" id="maoVal">—</div>
+        </div>
+        <div class="mao-val-block">
+          <div class="mao-rule-label">Your Offer</div>
+          <div class="mao-val" id="offerVsMAO" style="color:var(--text)">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOLDING COST DAY COUNTER -->
+    <div class="day-counter">
+      <div class="day-counter-label">
+        <span>⚠ Holding Cost Clock</span>
+        Every day you own this property costs you money. Delays kill margins.
+      </div>
+      <div class="day-stats">
+        <div class="day-stat">
+          <div class="day-stat-val" id="costPerDay">—</div>
+          <div class="day-stat-label">Per Day</div>
+        </div>
+        <div class="day-stat">
+          <div class="day-stat-val" id="costPerWeek">—</div>
+          <div class="day-stat-label">Per Week</div>
+        </div>
+        <div class="day-stat">
+          <div class="day-stat-val" id="extraMonth">—</div>
+          <div class="day-stat-label">+1 Month delay</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENARIO STRESS TEST -->
+    <div class="scenarios-title">Scenario Stress Test — Know Your Downside Before You Commit</div>
+    <div class="scenarios-grid">
+      <div class="scenario-card bear">
+        <div class="scenario-name">🐻 Bear Case</div>
+        <div id="bearRows"></div>
+      </div>
+      <div class="scenario-card base">
+        <div class="scenario-name">📊 Base Case</div>
+        <div id="baseRows"></div>
+      </div>
+      <div class="scenario-card bull">
+        <div class="scenario-name">🐂 Bull Case</div>
+        <div id="bullRows"></div>
+      </div>
+    </div>
+
+    <!-- EXIT STRATEGY A vs B -->
+    <div class="breakdown-title" style="--c:var(--green)">Exit Strategy — Flip vs. Hold Comparison</div>
+    <div class="exit-grid">
+      <div class="exit-card flip">
+        <div class="exit-card-title">
+          <span class="dot"></span>
+          Plan A — Sell It
+        </div>
+        <div id="flipRows"></div>
+      </div>
+      <div class="exit-card hold">
+        <div class="exit-card-title">
+          <span class="dot"></span>
+          Plan B — Hold as Rental
+        </div>
+        <div id="holdRows"></div>
+      </div>
+    </div>
+
+    <!-- COST BREAKDOWN BARS -->
+    <div class="breakdown-title">Cost Breakdown — Where Your Money Goes</div>
+    <div class="breakdown-bars" id="breakdownBars"></div>
+
+    <div class="footer-note">
+      ProfitFlip is a deal analysis tool. All projections are estimates based on your inputs.<br>
+      Always verify ARV with recent sold comps (last 60 days). Consult a licensed professional before closing.
+    </div>
+
+  </div>
+</div>
+
+<script>
+let ruleMultiplier = 0.70;
+let loanType = 'hardmoney';
+
+function updateSlider(id, valId, suffix) {
+  document.getElementById(valId).textContent = document.getElementById(id).value + suffix;
+}
+
+function setLoanType(type, btn) {
+  loanType = type;
+  document.querySelectorAll('.toggle-group')[0].querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('loan-fields').style.display = type === 'cash' ? 'none' : 'block';
+  calc();
+}
+
+function setRule(val, btn) {
+  ruleMultiplier = val / 100;
+  btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  calc();
+}
+
+function fmt(n) {
+  if (Math.abs(n) >= 1000000) return '$' + (n/1000000).toFixed(2) + 'M';
+  if (Math.abs(n) >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
+  return '$' + Math.round(n).toLocaleString('en-US');
+}
+
+function fmtK(n) {
+  if (Math.abs(n) >= 1000) return '$' + (n/1000).toFixed(1) + 'k';
+  return '$' + Math.round(n);
+}
+
+function scenarioRows(profit, roi, margin) {
+  const color = profit > 0 ? '#00e87a' : '#ff3d3d';
+  return `
+    <div class="scenario-row"><span class="scenario-row-label">Net Profit</span><span class="scenario-row-val" style="color:${color}">${fmt(profit)}</span></div>
+    <div class="scenario-row"><span class="scenario-row-label">ROI</span><span class="scenario-row-val">${roi.toFixed(1)}%</span></div>
+    <div class="scenario-row"><span class="scenario-row-label">Margin</span><span class="scenario-row-val">${margin.toFixed(1)}%</span></div>
+  `;
+}
+
+function computeDeal(purchase, arv, rehab, contingencyPct, downPct, rate, points, months, monthly, commissionPct, closingPct) {
+  const rehabTotal = rehab * (1 + contingencyPct / 100);
+  let loanAmt = 0, interestCost = 0, pointsCost = 0, closingBuy = 0;
+
+  if (loanType !== 'cash') {
+    loanAmt = purchase * (1 - downPct / 100);
+    interestCost = loanAmt * (rate / 100) * (months / 12);
+    pointsCost = loanAmt * (points / 100);
+    closingBuy = purchase * 0.015;
+  } else {
+    closingBuy = purchase * 0.01;
+  }
+
+  const holdingCost = monthly * months;
+  const sellCommission = arv * (commissionPct / 100);
+  const sellClosing = arv * (closingPct / 100);
+  const totalCosts = purchase + rehabTotal + interestCost + pointsCost + closingBuy + holdingCost + sellCommission + sellClosing;
+  const netProfit = arv - totalCosts;
+  const cashDown = loanType === 'cash' ? purchase : purchase * (downPct / 100);
+  const cashIn = cashDown + rehabTotal + pointsCost + closingBuy;
+  const roi = cashIn > 0 ? (netProfit / cashIn) * 100 : 0;
+  const margin = arv > 0 ? (netProfit / arv) * 100 : 0;
+  const annualRoi = months > 0 ? roi * (12 / months) : 0;
+  const breakeven = totalCosts;
+  const costPerDay = (interestCost + holdingCost) / (months * 30);
+  const mao = arv * ruleMultiplier - rehabTotal;
+
+  return { netProfit, roi, margin, annualRoi, cashIn, breakeven, costPerDay, totalCosts, rehabTotal, interestCost, holdingCost, sellCommission, sellClosing, closingBuy, pointsCost, mao };
+}
+
+function calc() {
+  const purchase = +document.getElementById('purchase').value || 0;
+  const arv = +document.getElementById('arv').value || 0;
+  const rehab = +document.getElementById('rehab').value || 0;
+  const contingencyPct = +document.getElementById('contingency').value || 0;
+  const downPct = +document.getElementById('downpct').value || 0;
+  const rate = +document.getElementById('rate').value || 0;
+  const points = +document.getElementById('points').value || 0;
+  const months = +document.getElementById('months').value || 0;
+  const monthly = +document.getElementById('monthly').value || 0;
+  const commissionPct = +document.getElementById('commission').value || 0;
+  const closingPct = +document.getElementById('closingpct').value || 0;
+  const rent = +document.getElementById('rent').value || 0;
+  const vacancy = +document.getElementById('vacancy').value || 0;
+
+  const d = computeDeal(purchase, arv, rehab, contingencyPct, downPct, rate, points, months, monthly, commissionPct, closingPct);
+
+  // KEY METRICS
+  const profitEl = document.getElementById('netProfit');
+  profitEl.textContent = fmt(d.netProfit);
+  profitEl.className = 'metric-value ' + (d.netProfit > 0 ? 'green' : 'red');
+
+  document.getElementById('roi').textContent = d.roi.toFixed(1) + '%';
+  document.getElementById('roi').className = 'metric-value ' + (d.roi > 15 ? 'green' : d.roi > 0 ? 'yellow' : 'red');
+  document.getElementById('cashIn').textContent = fmt(d.cashIn);
+  document.getElementById('margin').textContent = d.margin.toFixed(1) + '%';
+  document.getElementById('annualRoi').textContent = d.annualRoi.toFixed(1) + '%';
+  document.getElementById('breakeven').textContent = fmt(d.breakeven);
+
+  // VERDICT
+  const verdict = document.getElementById('verdict');
+  const vTitle = document.getElementById('verdictTitle');
+  const vSub = document.getElementById('verdictSub');
+  const vIcon = document.getElementById('verdictIcon');
+
+  if (d.netProfit > 25000 && d.roi > 15) {
+    verdict.className = 'verdict go';
+    vIcon.textContent = '🔥';
+    vTitle.textContent = 'STRONG DEAL — PULL THE TRIGGER';
+    vSub.textContent = `Net profit of ${fmt(d.netProfit)} with ${d.roi.toFixed(1)}% ROI. Numbers are solid. Don't overthink it.`;
+  } else if (d.netProfit > 0 && d.roi > 0) {
+    verdict.className = 'verdict caution';
+    vIcon.textContent = '⚠️';
+    vTitle.textContent = 'PROCEED WITH CAUTION';
+    vSub.textContent = `Deal works on paper but margins are thin. One bad week of delays eats your profit. Negotiate harder.`;
+  } else {
+    verdict.className = 'verdict nogo';
+    vIcon.textContent = '🚫';
+    vTitle.textContent = 'WALK AWAY — DEAL IS DEAD';
+    vSub.textContent = `You're looking at ${fmt(d.netProfit)} loss. Either renegotiate purchase price or find a better deal.`;
+  }
+
+  // MAO
+  document.getElementById('maoRuleLabel').textContent = (ruleMultiplier * 100).toFixed(0) + '% Rule';
+  document.getElementById('maoVal').textContent = fmt(d.mao);
+  const offerVsMAO = document.getElementById('offerVsMAO');
+  offerVsMAO.textContent = fmt(purchase);
+  offerVsMAO.style.color = purchase <= d.mao ? 'var(--green)' : 'var(--red)';
+
+  // DAY COUNTER
+  document.getElementById('costPerDay').textContent = fmtK(d.costPerDay);
+  document.getElementById('costPerWeek').textContent = fmtK(d.costPerDay * 7);
+  document.getElementById('extraMonth').textContent = fmtK(d.costPerDay * 30);
+
+  // SCENARIOS
+  function computeScenario(arvMult, rehabMult, monthsMult) {
+    const sARV = arv * arvMult;
+    const sRehab = rehab * rehabMult;
+    const sMonths = Math.round(months * monthsMult);
+    const sd = computeDeal(purchase, sARV, sRehab, contingencyPct, downPct, rate, points, sMonths, monthly, commissionPct, closingPct);
+    return sd;
+  }
+
+  const bear = computeScenario(0.92, 1.20, 1.5);
+  const base = computeDeal(purchase, arv, rehab, contingencyPct, downPct, rate, points, months, monthly, commissionPct, closingPct);
+  const bull = computeScenario(1.05, 0.90, 0.85);
+
+  document.getElementById('bearRows').innerHTML = scenarioRows(bear.netProfit, bear.roi, bear.margin);
+  document.getElementById('baseRows').innerHTML = scenarioRows(base.netProfit, base.roi, base.margin);
+  document.getElementById('bullRows').innerHTML = scenarioRows(bull.netProfit, bull.roi, bull.margin);
+
+  // EXIT A vs B
+  const flipRows = [
+    ['Sale Price', fmt(arv)],
+    ['Net Profit', fmt(d.netProfit)],
+    ['ROI', d.roi.toFixed(1) + '%'],
+    ['Annualized ROI', d.annualRoi.toFixed(1) + '%'],
+    ['Time to Cash', months + ' months'],
+  ];
+  document.getElementById('flipRows').innerHTML = flipRows.map(([l,v]) =>
+    `<div class="exit-row"><span class="exit-row-label">${l}</span><span class="exit-row-val">${v}</span></div>`
+  ).join('');
+
+  // Hold as Rental — Plan B
+  const monthlyRentEff = rent * (1 - vacancy / 100);
+  const opExpense = monthlyRentEff * 0.40;
+  const noi = (monthlyRentEff - opExpense) * 12;
+  const allInCost = purchase + d.rehabTotal;
+  const capRate = allInCost > 0 ? (noi / allInCost) * 100 : 0;
+  const cashDown = loanType === 'cash' ? purchase : purchase * (downPct / 100);
+  const annualDebt = loanType === 'cash' ? 0 : (purchase * (1 - downPct/100)) * (rate / 100);
+  const cashFlow = noi - annualDebt;
+  const cocReturn = cashDown > 0 ? (cashFlow / (cashDown + d.rehabTotal)) * 100 : 0;
+  const dscr = annualDebt > 0 ? noi / annualDebt : 99;
+
+  const holdRows = [
+    ['Eff. Monthly Rent', fmt(monthlyRentEff)],
+    ['Cap Rate', capRate.toFixed(2) + '%'],
+    ['Annual Cash Flow', fmt(cashFlow)],
+    ['CoC Return', cocReturn.toFixed(1) + '%'],
+    ['DSCR', dscr > 10 ? '∞ (cash)' : dscr.toFixed(2) + 'x'],
+  ];
+  document.getElementById('holdRows').innerHTML = holdRows.map(([l,v]) =>
+    `<div class="exit-row"><span class="exit-row-label">${l}</span><span class="exit-row-val">${v}</span></div>`
+  ).join('');
+
+  // BREAKDOWN BARS
+  const costs = [
+    ['Purchase Price', purchase, '#4d9fff'],
+    ['Rehab + Contingency', d.rehabTotal, '#ff6b35'],
+    ['Interest / Financing', d.interestCost + d.pointsCost, '#ffd044'],
+    ['Holding Costs', d.holdingCost, '#b060f0'],
+    ['Selling Costs', d.sellCommission + d.sellClosing, '#00e87a'],
+    ['Closing (Buy)', d.closingBuy, '#5a6280'],
+  ];
+  const maxCost = Math.max(...costs.map(c => c[1]));
+  document.getElementById('breakdownBars').innerHTML = costs.map(([label, val, color]) => `
+    <div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${maxCost > 0 ? (val/maxCost*100).toFixed(1) : 0}%;background:${color}"></div>
+      </div>
+      <div class="bar-val">${fmt(val)}</div>
+    </div>
+  `).join('');
+}
+
+// Init
+calc();
+</script>
+</body>
+</html>
